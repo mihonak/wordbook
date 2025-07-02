@@ -85,10 +85,10 @@ def get_sentences_data():
 
             if sentence_text and unmastered_words:
                 sentences_data.append({
-                    'section': section,
-                    'no': no,
-                    'sentence': sentence_text,
-                    'unmastered_words': unmastered_words,
+                    'Section': section,
+                    'No.': no,
+                    'Sentence': sentence_text,
+                    'Unmastered_words': unmastered_words,
                     'page_id': page['id']
                 })
 
@@ -146,10 +146,9 @@ def main():
         st.markdown(f"**{len(filtered_df)}** sentences found")
 
         # 表形式で表示
-        columns = ['section', 'no', 'sentence', 'unmastered_words']
+        columns = ['Section', 'No.', 'Sentence', 'Unmastered_words']
         display_df = filtered_df[columns].copy()
-        display_df = display_df.sort_values(['section', 'no'])
-        display_df.columns = ['Section', 'No.', '例文', '未習得単語']
+        display_df = display_df.sort_values(['Section', 'No.'])
 
         st.dataframe(
             display_df,
@@ -162,10 +161,10 @@ def main():
                 "No.": st.column_config.NumberColumn(
                     width="small"
                 ),
-                "例文": st.column_config.TextColumn(
+                "Sentence": st.column_config.TextColumn(
                     width="large"
                 ),
-                "未習得単語": st.column_config.TextColumn(
+                "Unmastered_words": st.column_config.TextColumn(
                     width="medium"
                 )
             }
