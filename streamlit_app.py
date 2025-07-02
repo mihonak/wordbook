@@ -23,11 +23,37 @@ def get_notion_client():
     return Client(auth=notion_token)
 
 
-@st.cache_data
-def get_sentences_data():
-    """Sentencesデータベースから全データを取得"""
+@st.cache_data(ttl=60)  # 60秒でキャッシュを期限切れにする
+def get_sentence_texts(sentence_ids):
+    """例文IDリストから例文テキストを一括取得"""
+    if not sentence_ids:
+        return []
+
+    notion = get_notion_client()
+    sentences = []
+
+    # バッチ処理で例文を取得（最大10個まで）
+    for sentence_id in sentence_ids[:10]:  # パフォーマンス向上のため最大10個に制限
+        try:
+            sentence_page = notion.pages.retrieve(page_id=sentence_id)
+            properties = sentence_page['properties']
+            title_prop = properties.get('例文')
+            if title_prop and title_prop.get('type') == 'title':
+                titles = title_prop.get('title', [])
+                if titles and len(titles) > 0:
+                    text = titles[0]['plain_text']
+                    sentences.append(text)
+        except Exception:
+            continue
+
+    return sentences
+
+
+@st.cache_data(ttl=60)  # 60秒でキャッシュを期限切れにする
+def get_words_data():
+    """Wordsデータベースから全データを取得"""
     notion = get_notion_client()  # キャッシュされたクライアントを使用
-    sentences_db_id = "2230dc53-a13b-8055-9c36-cbe6162846ef"
+    words_db_id = "2230dc53-a13b-8007-91d2-c3ed98f8dc95"  # WordsデータベースのID
 
     try:
         # 全データを取得
@@ -37,7 +63,7 @@ def get_sentences_data():
 
         while has_more:
             query_params = {
-                "database_id": sentences_db_id,
+                "database_id": words_db_id,
                 "page_size": 100
             }
             if start_cursor:
@@ -49,50 +75,78 @@ def get_sentences_data():
             start_cursor = result.get('next_cursor')
 
         # データを整理
-        sentences_data = []
+        words_data = []
         for page in all_results:
-            sentence_text = ""
-            unmastered_words = ""
+            word_text = ""
             section = None
             no = None
+            status = None
+            sentences = []
 
             for prop_name, prop_value in page['properties'].items():
                 prop_type = prop_value.get('type')
 
                 if prop_type == 'title':
-                    # 例文
+                    # 単語
                     title_content = prop_value.get('title')
                     if title_content and len(title_content) > 0:
-                        sentence_text = title_content[0]['plain_text']
+                        word_text = title_content[0]['plain_text']
 
-                elif prop_type == 'formula':
-                    # Unmastered Words
-                    formula_result = prop_value.get('formula', {})
-                    if formula_result.get('type') == 'string':
-                        string_value = formula_result.get('string')
-                        if string_value and string_value.strip():
-                            if 'unmastered' in prop_name.lower():
-                                unmastered_words = string_value
+                elif prop_type == 'relation':
+                    # Sentences (relation) - IDのみ収集、後でバッチ取得
+                    if 'sentences' in prop_name.lower():
+                        relation_data = prop_value.get('relation', [])
+                        sentence_ids = []
+                        for relation_item in relation_data:
+                            sentence_id = relation_item.get('id')
+                            if sentence_id:
+                                sentence_ids.append(sentence_id)
+                        sentences = sentence_ids  # IDリストを保存
 
-                elif prop_type == 'number':
-                    # Section, No
-                    number_value = prop_value.get('number')
-                    if number_value is not None:
-                        if prop_name.lower() == 'section':
-                            section = int(number_value)
-                        elif prop_name.lower() == 'no':
-                            no = int(number_value)
+                elif prop_type == 'rollup':
+                    # Section, No (rollup)
+                    rollup_result = prop_value.get('rollup', {})
 
-            if sentence_text and unmastered_words:
-                sentences_data.append({
+                    if rollup_result.get('type') == 'array':
+                        # rollupが配列の場合
+                        array_data = rollup_result.get('array', [])
+                        if array_data and len(array_data) > 0:
+                            first_item = array_data[0]
+                            if first_item.get('type') == 'number':
+                                number_value = first_item.get('number')
+                                if number_value is not None:
+                                    if prop_name.lower() == 'section':
+                                        section = int(number_value)
+                                    elif 'no' in prop_name.lower():
+                                        no = int(number_value)
+                    elif rollup_result.get('type') == 'number':
+                        # rollupが直接数値の場合
+                        number_value = rollup_result.get('number')
+                        if number_value is not None:
+                            if prop_name.lower() == 'section':
+                                section = int(number_value)
+                            elif 'no' in prop_name.lower():
+                                no = int(number_value)
+
+                elif prop_type == 'status':
+                    # Status
+                    if 'status' in prop_name.lower():
+                        status_obj = prop_value.get('status')
+                        if status_obj:
+                            status = status_obj.get('name', '')
+
+            # 未習得の単語のみを取得 (Statusが"Mastered"でないもの)
+            if word_text and status != "Mastered":
+                words_data.append({
                     'Section': section,
                     'No.': no,
-                    'Sentence': sentence_text,
-                    'Unmastered_words': unmastered_words,
+                    'Word': word_text,
+                    'Status': status,
+                    'sentence_ids': sentences,  # 例文IDを保存
                     'page_id': page['id']
                 })
 
-        return sentences_data
+        return words_data
 
     except Exception as e:
         st.error(f"データ取得エラー: {e}")
@@ -109,68 +163,78 @@ def main():
 
     st.title("📚 Wordbook")
 
+    # Notion接続テスト
+    try:
+        get_notion_client()
+    except Exception as e:
+        st.error(f"Notion API接続エラー: {e}")
+        return
+
     # データを取得
     with st.spinner("データを読み込み中..."):
-        sentences_data = get_sentences_data()
+        words_data = get_words_data()
 
-    if not sentences_data:
+    if not words_data:
         st.warning("データが見つかりませんでした")
         return
 
     # DataFrameに変換
-    df = pd.DataFrame(sentences_data)
+    df = pd.DataFrame(words_data)
 
-    # サイドバーでフィルタ設定
-    st.sidebar.header("🔍 Filter")
+    # 単語選択と例文表示
+    if not df.empty:
+        st.header("📖 Unmastered words.")
+        st.markdown(f"**{len(df)}** words found")
 
-    # 未習得単語でのフィルタ
-    search_word = st.sidebar.text_input(
-        "Search",
-        placeholder="例: density, gradually",
-        help="部分一致で検索します"
-    )
+        # ソート済みのリストを作成
+        sorted_df = df.sort_values(['Section', 'No.'])
 
-    # フィルタ適用
-    filtered_df = df.copy()
+        # 単語選択
+        word_options = []
+        for _, row in sorted_df.iterrows():
+            section = row['Section'] if row['Section'] is not None else '?'
+            no = row['No.'] if row['No.'] is not None else '?'
+            word = row['Word']
+            status = row['Status'] if row['Status'] else 'Unknown'
+            display_text = f"Section {section}-{no}: {word} ({status})"
+            word_options.append(display_text)
 
-    if search_word:
-        filtered_df = filtered_df[
-            filtered_df['unmastered_words'].str.contains(
-                search_word, case=False, na=False
-            )
-        ]
-
-    # 例文一覧表示
-    if not filtered_df.empty:
-        st.header("📖 Sentences contains unmastered words.")
-        st.markdown(f"**{len(filtered_df)}** sentences found")
-
-        # 表形式で表示
-        columns = ['Section', 'No.', 'Sentence', 'Unmastered_words']
-        display_df = filtered_df[columns].copy()
-        display_df = display_df.sort_values(['Section', 'No.'])
-
-        st.dataframe(
-            display_df,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Section": st.column_config.NumberColumn(
-                    width="small"
-                ),
-                "No.": st.column_config.NumberColumn(
-                    width="small"
-                ),
-                "Sentence": st.column_config.TextColumn(
-                    width="large"
-                ),
-                "Unmastered_words": st.column_config.TextColumn(
-                    width="medium"
-                )
-            }
+        selected_display = st.selectbox(
+            "単語を選択してください:",
+            options=word_options,
+            help="単語を選択すると例文が表示されます"
         )
+
+        if selected_display:
+            # 選択された単語のインデックスを取得
+            selected_index = word_options.index(selected_display)
+            word_info = sorted_df.iloc[selected_index]
+            selected_word = word_info['Word']
+
+            st.markdown("---")
+            st.subheader(f"**{selected_word}** の例文")
+            section = word_info['Section']
+            no = word_info['No.']
+            status = word_info['Status']
+            info_text = f"**Section:** {section} | **No.:** {no}"
+            info_text += f" | **Status:** {status}"
+            st.markdown(info_text)
+
+            # 例文を表示（保存されたIDを使用）
+            try:
+                sentence_ids = word_info.get('sentence_ids', [])
+                all_sentences = get_sentence_texts(sentence_ids)
+
+                if all_sentences:
+                    for i, sentence in enumerate(all_sentences, 1):
+                        st.markdown(f"**{i}.** {sentence}")
+                else:
+                    st.info("この単語には例文がありません。")
+
+            except Exception as e:
+                st.error(f"例文の取得に失敗しました: {e}")
     else:
-        st.info("未習得単語がある例文が見つかりませんでした。")
+        st.info("未習得単語が見つかりませんでした。")
 
 
 if __name__ == "__main__":
