@@ -26,12 +26,7 @@ def get_notion_client():
 @st.cache_data
 def get_sentences_data():
     """Sentencesデータベースから全データを取得"""
-    notion_token = os.getenv("NOTION_TOKEN")
-    if not notion_token:
-        st.error("NOTION_TOKENが設定されていません")
-        st.stop()
-
-    notion = Client(auth=notion_token)
+    notion = get_notion_client()  # キャッシュされたクライアントを使用
     sentences_db_id = "2230dc53-a13b-8055-9c36-cbe6162846ef"
 
     try:
