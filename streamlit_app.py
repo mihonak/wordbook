@@ -49,6 +49,19 @@ def get_sentence_texts(sentence_ids):
     return sentences
 
 
+def get_status_emoji(status):
+    """ステータスに対応するemojiを返す"""
+    status_map = {
+        'Not Sure': '🤔',
+        'Seen It': '👀',
+        'Almost There': '😃',
+        'Mastered': '✅',  # 通常は表示されないが念のため
+        None: '❓',
+        '': '❓'
+    }
+    return status_map.get(status, '❓')
+
+
 @st.cache_data(ttl=60)  # 60秒でキャッシュを期限切れにする
 def get_words_data():
     """Wordsデータベースから全データを取得"""
@@ -196,7 +209,8 @@ def main():
             no = row['No.'] if row['No.'] is not None else '?'
             word = row['Word']
             status = row['Status'] if row['Status'] else 'Unknown'
-            display_text = f"Section {section}-{no}: {word} ({status})"
+            status_emoji = get_status_emoji(status)
+            display_text = f"Section {section}-{no}: {status_emoji} {word}"
             word_options.append(display_text)
 
         selected_display = st.selectbox(
@@ -216,8 +230,9 @@ def main():
             section = word_info['Section']
             no = word_info['No.']
             status = word_info['Status']
+            status_emoji = get_status_emoji(status)
             info_text = f"**Section:** {section} | **No.:** {no}"
-            info_text += f" | **Status:** {status}"
+            info_text += f" | **Status:** {status} {status_emoji}"
             st.markdown(info_text)
 
             # 例文を表示（保存されたIDを使用）
