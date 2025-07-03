@@ -214,7 +214,7 @@ def main():
             word_options.append(display_text)
 
         selected_display = st.selectbox(
-            "単語を選択してください:",
+            "Select a word:",
             options=word_options,
             help="単語を選択すると例文が表示されます"
         )
@@ -226,7 +226,7 @@ def main():
             selected_word = word_info['Word']
 
             st.markdown("---")
-            st.subheader(f"**{selected_word}** の例文")
+            st.subheader(f"Example sentences for: **{selected_word}**")
             section = word_info['Section']
             no = word_info['No.']
             status = word_info['Status']
@@ -242,7 +242,7 @@ def main():
 
                 if all_sentences:
                     for i, sentence in enumerate(all_sentences, 1):
-                        st.markdown(f"**{i}.** {sentence}")
+                        st.subheader(sentence)
                 else:
                     st.info("この単語には例文がありません。")
 
