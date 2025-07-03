@@ -23,7 +23,7 @@ def get_notion_client():
     return Client(auth=notion_token)
 
 
-@st.cache_data(ttl=60)  # 60秒でキャッシュを期限切れにする
+@st.cache_data(ttl=60, show_spinner=False)  # スピナーを非表示
 def get_sentence_texts(sentence_ids):
     """例文IDリストから例文テキストを一括取得"""
     if not sentence_ids:
@@ -62,7 +62,7 @@ def get_status_emoji(status):
     return status_map.get(status, '❓')
 
 
-@st.cache_data(ttl=60)  # 60秒でキャッシュを期限切れにする
+@st.cache_data(ttl=60, show_spinner=False)  # スピナーを非表示
 def get_words_data():
     """Wordsデータベースから全データを取得"""
     notion = get_notion_client()  # キャッシュされたクライアントを使用
@@ -184,7 +184,7 @@ def main():
         return
 
     # データを取得
-    with st.spinner("データを読み込み中..."):
+    with st.spinner("Loading unmastered words..."):
         words_data = get_words_data()
 
     if not words_data:
