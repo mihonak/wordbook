@@ -41,7 +41,11 @@ def get_sentence_texts(sentence_ids):
             if title_prop and title_prop.get('type') == 'title':
                 titles = title_prop.get('title', [])
                 if titles and len(titles) > 0:
-                    text = titles[0]['plain_text']
+                    sentence_parts = []
+                    for text_element in titles:
+                        if text_element.get('plain_text'):
+                            sentence_parts.append(text_element['plain_text'])
+                    text = ''.join(sentence_parts).strip()
                     sentences.append(text)
         except Exception:
             continue
@@ -62,7 +66,7 @@ def get_status_emoji(status):
     return status_map.get(status, '❓')
 
 
-@st.cache_data(ttl=60, show_spinner=False)  # スピナーを非表示
+# @st.cache_data(ttl=60, show_spinner=False)  # デバッグ用に一時的に無効化
 def get_words_data():
     """Wordsデータベースから全データを取得"""
     notion = get_notion_client()  # キャッシュされたクライアントを使用
@@ -103,7 +107,12 @@ def get_words_data():
                     # 単語
                     title_content = prop_value.get('title')
                     if title_content and len(title_content) > 0:
-                        word_text = title_content[0]['plain_text']
+                        # 前後の空白を除去
+                        word_parts = []
+                        for text_element in title_content:
+                            if text_element.get('plain_text'):
+                                word_parts.append(text_element['plain_text'])
+                        word_text = ''.join(word_parts).strip()
 
                 elif prop_type == 'relation':
                     # Sentences (relation) - IDのみ収集、後でバッチ取得
@@ -226,7 +235,7 @@ def main():
             selected_word = word_info['Word']
 
             st.markdown("---")
-            st.subheader(f"Example sentences for: **{selected_word}**")
+            st.markdown(f"Example sentences for: **{selected_word}**")
             section = word_info['Section']
             no = word_info['No.']
             status = word_info['Status']
