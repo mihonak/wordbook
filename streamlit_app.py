@@ -66,7 +66,7 @@ def get_status_emoji(status):
     return status_map.get(status, '❓')
 
 
-# @st.cache_data(ttl=60, show_spinner=False)  # デバッグ用に一時的に無効化
+@st.cache_data(ttl=60, show_spinner=False)  # スピナーを非表示
 def get_words_data():
     """Wordsデータベースから全データを取得"""
     notion = get_notion_client()  # キャッシュされたクライアントを使用
@@ -250,8 +250,23 @@ def main():
                 all_sentences = get_sentence_texts(sentence_ids)
 
                 if all_sentences:
-                    for i, sentence in enumerate(all_sentences, 1):
-                        st.subheader(sentence)
+                    for sentence in all_sentences:
+                        # 改行で分割して行ごとに処理
+                        lines = (sentence.replace('\r\n', '\n')
+                                         .replace('\r', '\n')
+                                         .split('\n'))
+
+                        # 例文ブロックを開始
+                        style = ("font-size: 18px; line-height: 1.6; "
+                                 "margin-bottom: 16px")
+
+                        for line in lines:
+                            # 各行の余分な空白を除去
+                            cleaned_line = ' '.join(line.split())
+                            if cleaned_line:  # 空行でない場合のみ表示
+                                div = (f'<div style="{style};">'
+                                       f'{cleaned_line}</div>')
+                                st.markdown(div, unsafe_allow_html=True)
                 else:
                     st.info("この単語には例文がありません。")
 
