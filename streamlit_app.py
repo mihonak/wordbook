@@ -223,14 +223,6 @@ def main():
             display_text = f"Section {section}-{no}: {status_emoji} {word}"
             word_options.append(display_text)
 
-        # ランダム選択ボタンを追加
-        col1, col2 = st.columns([3, 1])
-        with col2:
-            if st.button("🎲 Pick One", help="ランダムに単語を選択"):
-                random_index = random.randint(0, len(word_options) - 1)
-                st.session_state.selected_word = word_options[random_index]
-                st.rerun()
-
         # デフォルトインデックスを決定
         default_index = 0
         if 'selected_word' in st.session_state:
@@ -241,13 +233,25 @@ def main():
                 # 選択された単語がリストにない場合はデフォルトのまま
                 pass
 
+        # ランダム選択ボタンを追加
+        col1, col2 = st.columns([1, 1], vertical_alignment='bottom')
+
         # 単語選択用のselectbox
-        selected_display = st.selectbox(
-            "Select a word:",
-            options=word_options,
-            index=default_index,
-            help="単語を選択すると例文が表示されます"
-        )
+        with col1:
+            selected_display = st.selectbox(
+                "Select a word:",
+                options=word_options,
+                index=default_index,
+                help="単語を選択すると例文が表示されます"
+            )
+
+        with col2:
+            if st.button("🎲 Pick One",
+                         help="ランダムに単語を選択",
+                         use_container_width=True):
+                random_index = random.randint(0, len(word_options) - 1)
+                st.session_state.selected_word = word_options[random_index]
+                st.rerun()
 
         if selected_display:
             # 選択された単語のインデックスを取得
