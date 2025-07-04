@@ -11,6 +11,7 @@ from src.wordbook.notion_client import (
     get_words_data,
     get_notion_client
 )
+from src.wordbook.i18n import get_text, get_available_languages
 
 
 def get_status_emoji(status):
@@ -28,27 +29,39 @@ def get_status_emoji(status):
 
 def main():
     """メイン関数"""
+    # 言語設定をサイドバーに追加
+    with st.sidebar:
+        st.header("Settings")
+        languages = get_available_languages()
+        selected_lang = st.selectbox(
+            "Language",
+            options=list(languages.keys()),
+            format_func=lambda x: languages[x],
+            index=0,  # デフォルトは英語
+            help="Select your preferred language"
+        )
+
     st.set_page_config(
-        page_title="Wordbook - セクション別未習得単語",
+        page_title=get_text('page_title', selected_lang),
         page_icon="📚",
         layout="wide"
     )
 
-    st.title("📚 Wordbook")
+    st.title(get_text('app_title', selected_lang))
 
     # Notion接続テスト
     try:
         get_notion_client()
     except Exception as e:
-        st.error(f"Notion API接続エラー: {e}")
+        st.error(f"{get_text('notion_api_error', selected_lang)} {e}")
         return
 
     # データを取得
-    st.toast("Loading unmastered words...", icon="📚")
+    st.toast(get_text('loading_words', selected_lang), icon="📚")
     words_data = get_words_data()
 
     if not words_data:
-        st.warning("データが見つかりませんでした")
+        st.warning(get_text('no_data_found', selected_lang))
         return
 
     # DataFrameに変換
@@ -56,8 +69,10 @@ def main():
 
     # 単語選択と例文表示
     if not df.empty:
-        st.header("📖 Unmastered words.")
-        st.markdown(f"**{len(df)}** words found")
+        st.header(get_text('unmastered_words_header', selected_lang))
+        word_count = len(df)
+        words_found_text = get_text('words_found', selected_lang)
+        st.markdown(f"**{word_count}** {words_found_text}")
 
         # ソート済みのリストを作成
         sorted_df = df.sort_values(['Section', 'No.'])
@@ -89,15 +104,15 @@ def main():
         # 単語選択用のselectbox
         with col1:
             selected_display = st.selectbox(
-                "Select a word:",
+                get_text('select_word', selected_lang),
                 options=word_options,
                 index=default_index,
-                help="単語を選択すると例文が表示されます"
+                help=get_text('select_word_help', selected_lang)
             )
 
         with col2:
-            if st.button("🎲 Pick One",
-                         help="ランダムに単語を選択",
+            if st.button(get_text('pick_one_button', selected_lang),
+                         help=get_text('pick_one_help', selected_lang),
                          use_container_width=True):
                 random_index = random.randint(0, len(word_options) - 1)
                 st.session_state.selected_word = word_options[random_index]
@@ -110,13 +125,19 @@ def main():
             selected_word = word_info['Word']
 
             st.markdown("---")
-            st.markdown(f"Example sentences for: **{selected_word}**")
+            example_text = get_text('example_sentences_for', selected_lang)
+            st.markdown(f"{example_text} **{selected_word}**")
             section = word_info['Section']
             no = word_info['No.']
             status = word_info['Status']
             status_emoji = get_status_emoji(status)
-            info_text = f"**Section:** {section} | **No.:** {no}"
-            info_text += f" | **Status:** {status} {status_emoji}"
+
+            section_text = get_text('section', selected_lang)
+            number_text = get_text('number', selected_lang)
+            status_text = get_text('status', selected_lang)
+            info_text = (f"**{section_text}:** {section} | "
+                         f"**{number_text}:** {no}")
+            info_text += f" | **{status_text}:** {status} {status_emoji}"
             st.markdown(info_text)
 
             # 例文を表示（保存されたIDを使用）
@@ -143,12 +164,13 @@ def main():
                                        f'{cleaned_line}</div>')
                                 st.markdown(div, unsafe_allow_html=True)
                 else:
-                    st.info("この単語には例文がありません。")
+                    st.info(get_text('no_example_sentences', selected_lang))
 
             except Exception as e:
-                st.error(f"例文の取得に失敗しました: {e}")
+                error_msg = get_text('sentence_fetch_error', selected_lang)
+                st.error(f"{error_msg} {e}")
     else:
-        st.info("未習得単語が見つかりませんでした。")
+        st.info(get_text('no_unmastered_words', selected_lang))
 
 
 if __name__ == "__main__":
