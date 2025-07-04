@@ -6,6 +6,7 @@ Streamlit単語帳アプリ - セクション別未習得単語表示
 import os
 import streamlit as st
 import pandas as pd
+import random
 from dotenv import load_dotenv
 from notion_client import Client
 
@@ -222,9 +223,29 @@ def main():
             display_text = f"Section {section}-{no}: {status_emoji} {word}"
             word_options.append(display_text)
 
+        # ランダム選択ボタンを追加
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            if st.button("🎲 Pick One", help="ランダムに単語を選択"):
+                random_index = random.randint(0, len(word_options) - 1)
+                st.session_state.selected_word = word_options[random_index]
+                st.rerun()
+
+        # デフォルトインデックスを決定
+        default_index = 0
+        if 'selected_word' in st.session_state:
+            try:
+                selected_word = st.session_state.selected_word
+                default_index = word_options.index(selected_word)
+            except ValueError:
+                # 選択された単語がリストにない場合はデフォルトのまま
+                pass
+
+        # 単語選択用のselectbox
         selected_display = st.selectbox(
             "Select a word:",
             options=word_options,
+            index=default_index,
             help="単語を選択すると例文が表示されます"
         )
 
