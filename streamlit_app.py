@@ -27,6 +27,14 @@ def get_status_emoji(status):
     return status_map.get(status, '❓')
 
 
+def on_word_selection_change():
+    """単語選択変更時のコールバック"""
+    # selectboxで選択されたインデックスをセッション状態に保存
+    selected_index = st.session_state.word_selectbox_index
+    st.session_state.selected_word_index = selected_index
+    st.session_state.selection_changed = True
+
+
 def main():
     """メイン関数"""
     # 言語設定をサイドバーに追加
@@ -89,38 +97,40 @@ def main():
             word_options.append(display_text)
 
         # デフォルトインデックスを決定
-        default_index = 0
-        if 'selected_word' in st.session_state:
-            try:
-                selected_word = st.session_state.selected_word
-                default_index = word_options.index(selected_word)
-            except ValueError:
-                # 選択された単語がリストにない場合はデフォルトのまま
-                pass
+        default_index = st.session_state.get('selected_word_index', 0)
+        # 範囲チェック
+        if default_index >= len(word_options):
+            default_index = 0
 
         # ランダム選択ボタンを追加
         col1, col2 = st.columns([1, 1], vertical_alignment='bottom')
 
         # 単語選択用のselectbox
         with col1:
-            selected_display = st.selectbox(
+            selected_index = st.selectbox(
                 get_text('select_word', selected_lang),
-                options=word_options,
+                options=range(len(word_options)),
+                format_func=lambda x: word_options[x],
                 index=default_index,
-                help=get_text('select_word_help', selected_lang)
+                help=get_text('select_word_help', selected_lang),
+                key="word_selectbox_index",
+                on_change=on_word_selection_change
             )
+
+            # セッション状態を更新
+            st.session_state.selected_word_index = selected_index
 
         with col2:
             if st.button(get_text('pick_one_button', selected_lang),
                          help=get_text('pick_one_help', selected_lang),
                          use_container_width=True):
                 random_index = random.randint(0, len(word_options) - 1)
-                st.session_state.selected_word = word_options[random_index]
+                st.session_state.selected_word_index = random_index
+                st.session_state.selection_changed = True
                 st.rerun()
 
-        if selected_display:
-            # 選択された単語のインデックスを取得
-            selected_index = word_options.index(selected_display)
+        if selected_index is not None and selected_index < len(word_options):
+            # 選択された単語の情報を取得
             word_info = sorted_df.iloc[selected_index]
             selected_word = word_info['Word']
 
@@ -163,6 +173,7 @@ def main():
                                 div = (f'<div style="{style};">'
                                        f'{cleaned_line}</div>')
                                 st.markdown(div, unsafe_allow_html=True)
+
                 else:
                     st.info(get_text('no_example_sentences', selected_lang))
 
