@@ -44,8 +44,8 @@ def main():
         return
 
     # データを取得
-    with st.spinner("Loading unmastered words..."):
-        words_data = get_words_data()
+    st.toast("Loading unmastered words...", icon="📚")
+    words_data = get_words_data()
 
     if not words_data:
         st.warning("データが見つかりませんでした")
