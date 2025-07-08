@@ -52,18 +52,21 @@ def get_unmastered_sentences():
 
                 if prop_type == 'title':
                     # 例文（タイトル）
-                    if prop_value.get('title') and len(prop_value['title']) > 0:
-                        sentence_text = prop_value['title'][0]['plain_text']
+                    title_data = prop_value.get('title')
+                    if title_data and len(title_data) > 0:
+                        sentence_text = title_data[0]['plain_text']
                         print(f"例文: {sentence_text}")
 
                 elif prop_type == 'rich_text':
                     # リッチテキスト
-                    if prop_value.get('rich_text') and len(prop_value['rich_text']) > 0:
-                        text = prop_value['rich_text'][0]['plain_text']
+                    rich_text_data = prop_value.get('rich_text')
+                    if rich_text_data and len(rich_text_data) > 0:
+                        text = rich_text_data[0]['plain_text']
                         print(f"{prop_name}: {text}")
 
                         # Unmastered words かどうか確認
-                        if 'unmastered' in prop_name.lower() or 'words' in prop_name.lower():
+                        prop_lower = prop_name.lower()
+                        if 'unmastered' in prop_lower or 'words' in prop_lower:
                             if text.strip():  # 空でない場合
                                 unmastered_words = text
 
@@ -122,8 +125,8 @@ def get_unmastered_sentences():
                 })
 
         # 結果をまとめて表示
-        print(
-            f"\n=== Unmastered words がある例文 ({len(unmastered_sentences)}件) ===")
+        unmastered_count = len(unmastered_sentences)
+        print(f"\n=== Unmastered words がある例文 ({unmastered_count}件) ===")
         for i, item in enumerate(unmastered_sentences, 1):
             print(f"\n{i}. {item['sentence']}")
             print(f"   未習得単語: {item['unmastered_words']}")
