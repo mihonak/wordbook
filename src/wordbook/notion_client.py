@@ -159,3 +159,30 @@ def get_words_data():
     except Exception as e:
         st.error(f"データ取得エラー: {e}")
         return []
+
+
+def update_word_status(page_id, new_status):
+    """単語のステータスを更新"""
+    try:
+        notion = get_notion_client()
+
+        # ステータスプロパティを更新
+        notion.pages.update(
+            page_id=page_id,
+            properties={
+                "Status": {
+                    "status": {
+                        "name": new_status
+                    }
+                }
+            }
+        )
+
+        # キャッシュをクリア
+        get_words_data.clear()
+
+        return True
+
+    except Exception as e:
+        st.error(f"ステータス更新エラー: {e}")
+        return False

@@ -39,7 +39,14 @@ TEXTS = {
 
         # Settings
         'language_setting': 'Language',
-        'language_help': 'Select your preferred language'
+        'language_help': 'Select your preferred language',
+
+        # Status update
+        'update_status': 'Update Status',
+        'update_status_help': 'Update the learning status of this word',
+        'status_updated': 'Status updated successfully!',
+        'status_update_error': 'Failed to update status:',
+        'updating_status': 'Updating status...'
     },
     'ja': {
         # Page config
@@ -69,7 +76,14 @@ TEXTS = {
 
         # Settings
         'language_setting': '言語',
-        'language_help': '使用する言語を選択してください'
+        'language_help': '使用する言語を選択してください',
+
+        # Status update
+        'update_status': 'ステータス更新',
+        'update_status_help': 'この単語の学習ステータスを更新します',
+        'status_updated': 'ステータスが正常に更新されました！',
+        'status_update_error': 'ステータス更新に失敗しました:',
+        'updating_status': 'ステータス更新中...'
     }
 }
 

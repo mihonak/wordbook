@@ -9,7 +9,8 @@ import random
 from src.wordbook.notion_client import (
     get_sentence_texts,
     get_words_data,
-    get_notion_client
+    get_notion_client,
+    update_word_status
 )
 from src.wordbook.i18n import get_text, get_available_languages
 
@@ -33,6 +34,47 @@ def on_word_selection_change():
     selected_index = st.session_state.word_selectbox_index
     st.session_state.selected_word_index = selected_index
     st.session_state.selection_changed = True
+
+
+@st.dialog("Confirm Status Update")
+def show_confirmation_dialog(current_status, new_status, page_id, lang):
+    """ステータス更新確認ダイアログ"""
+    current_emoji = get_status_emoji(current_status)
+    new_emoji = get_status_emoji(new_status)
+
+    st.write(f"**Current:** {current_status} {current_emoji}")
+    st.write(f"**New:** {new_status} {new_emoji}")
+    st.write("")
+    st.write("Are you sure you want to update the status?")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("✅ Yes, Update", use_container_width=True,
+                     type="primary"):
+            updating_msg = get_text('updating_status', lang)
+            with st.spinner(updating_msg):
+                success = update_word_status(page_id, new_status)
+
+            if success:
+                success_msg = get_text('status_updated', lang)
+                st.toast(success_msg, icon="✅")
+                # ダイアログを閉じるためのフラグをクリア
+                if 'show_dialog' in st.session_state:
+                    del st.session_state.show_dialog
+                st.rerun()
+            else:
+                error_msg = get_text('status_update_error', lang)
+                st.error(error_msg)
+
+    with col2:
+        if st.button("❌ Cancel", use_container_width=True):
+            # ダイアログを閉じるためのフラグをクリア
+            if 'show_dialog' in st.session_state:
+                del st.session_state.show_dialog
+            # selectboxの値を元に戻すためのフラグを設定
+            st.session_state.reset_selectbox = True
+            st.rerun()
 
 
 def main():
@@ -144,11 +186,52 @@ def main():
 
             section_text = get_text('section', selected_lang)
             number_text = get_text('number', selected_lang)
-            status_text = get_text('status', selected_lang)
             info_text = (f"**{section_text}:** {section} | "
                          f"**{number_text}:** {no}")
-            info_text += f" | **{status_text}:** {status} {status_emoji}"
-            st.markdown(info_text)
+
+            # 単語情報とステータス更新を横並びに配置
+            col_info, col_status = st.columns(
+                [1, 2], vertical_alignment='bottom')
+
+            with col_info:
+                st.markdown(info_text)
+
+            with col_status:
+                # 現在のステータスを含むすべての選択肢を作成
+                all_statuses = ['Not Sure', 'Seen It',
+                                'Almost There', 'Mastered']
+
+                # 現在のステータスのインデックスを取得
+                try:
+                    current_index = all_statuses.index(status)
+                except ValueError:
+                    current_index = 0
+
+                # selectboxリセットフラグをチェック
+                if st.session_state.get('reset_selectbox', False):
+                    # リセットフラグをクリア
+                    st.session_state.reset_selectbox = False
+                    # selectboxのキーをリセットして再描画を促す
+                    selectbox_key = f"status_update_{selected_index}"
+                    if selectbox_key in st.session_state:
+                        del st.session_state[selectbox_key]
+
+                new_status = st.selectbox(
+                    get_text('update_status', selected_lang),
+                    options=all_statuses,
+                    index=current_index,
+                    help=get_text('update_status_help', selected_lang),
+                    key=f"status_update_{selected_index}"
+                )
+
+                # 現在のステータスと異なる場合、確認ダイアログを表示
+                if (new_status != status and
+                        not st.session_state.get('show_dialog', False)):
+                    # ダイアログ表示フラグを設定
+                    st.session_state.show_dialog = True
+                    page_id = word_info['page_id']
+                    show_confirmation_dialog(
+                        status, new_status, page_id, selected_lang)
 
             # 例文を表示（保存されたIDを使用）
             try:
