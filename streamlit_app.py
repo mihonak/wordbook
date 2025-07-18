@@ -7,7 +7,6 @@ import streamlit as st
 import pandas as pd
 import random
 from src.wordbook.notion_client import (
-    get_sentence_texts,
     get_words_data,
     get_notion_client,
     update_word_status
@@ -125,17 +124,16 @@ def main():
         st.markdown(f"**{word_count}** {words_found_text}")
 
         # ソート済みのリストを作成
-        sorted_df = df.sort_values(['Section', 'No.'])
+        sorted_df = df.sort_values(['Section'])
 
         # 単語選択
         word_options = []
         for _, row in sorted_df.iterrows():
             section = row['Section'] if row['Section'] is not None else '?'
-            no = row['No.'] if row['No.'] is not None else '?'
             word = row['Word']
             status = row['Status'] if row['Status'] else 'Unknown'
             status_emoji = get_status_emoji(status)
-            display_text = f"Section {section}-{no}: {status_emoji} {word}"
+            display_text = f"Section {section}: {status_emoji} {word}"
             word_options.append(display_text)
 
         # デフォルトインデックスを決定
@@ -180,14 +178,11 @@ def main():
             example_text = get_text('example_sentences_for', selected_lang)
             st.markdown(f"{example_text} **{selected_word}**")
             section = word_info['Section']
-            no = word_info['No.']
             status = word_info['Status']
             status_emoji = get_status_emoji(status)
 
             section_text = get_text('section', selected_lang)
-            number_text = get_text('number', selected_lang)
-            info_text = (f"**{section_text}:** {section} | "
-                         f"**{number_text}:** {no}")
+            info_text = f"**{section_text}:** {section}"
 
             # 単語情報とステータス更新を横並びに配置
             col_info, col_status = st.columns(
@@ -233,30 +228,31 @@ def main():
                     show_confirmation_dialog(
                         status, new_status, page_id, selected_lang)
 
-            # 例文を表示（保存されたIDを使用）
+            # 例文を表示（rollupから取得した例文を使用）
             try:
-                sentence_ids = word_info.get('sentence_ids', [])
-                all_sentences = get_sentence_texts(sentence_ids)
+                example_sentence = word_info.get('example_sentence', '')
 
-                if all_sentences:
-                    for sentence in all_sentences:
-                        # 改行で分割して行ごとに処理
-                        lines = (sentence.replace('\r\n', '\n')
-                                         .replace('\r', '\n')
-                                         .split('\n'))
+                # デバッグ情報を追加
+                preview = example_sentence[:100] if example_sentence else '(空)'
+                st.write(f"**DEBUG**: example_sentence = '{preview}...'")
 
-                        # 例文ブロックを開始
-                        style = ("font-size: 18px; line-height: 1.6; "
-                                 "margin-bottom: 16px")
+                if example_sentence:
+                    # 改行で分割して行ごとに処理
+                    lines = (example_sentence.replace('\r\n', '\n')
+                             .replace('\r', '\n')
+                             .split('\n'))
 
-                        for line in lines:
-                            # 各行の余分な空白を除去
-                            cleaned_line = ' '.join(line.split())
-                            if cleaned_line:  # 空行でない場合のみ表示
-                                div = (f'<div style="{style};">'
-                                       f'{cleaned_line}</div>')
-                                st.markdown(div, unsafe_allow_html=True)
+                    # 例文ブロックを開始
+                    style = ("font-size: 18px; line-height: 1.6; "
+                             "margin-bottom: 16px")
 
+                    for line in lines:
+                        # 各行の余分な空白を除去
+                        cleaned_line = ' '.join(line.split())
+                        if cleaned_line:  # 空行でない場合のみ表示
+                            div = (f'<div style="{style};">'
+                                   f'{cleaned_line}</div>')
+                            st.markdown(div, unsafe_allow_html=True)
                 else:
                     st.info(get_text('no_example_sentences', selected_lang))
 
