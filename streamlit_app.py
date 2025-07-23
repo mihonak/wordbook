@@ -130,10 +130,11 @@ def main():
         word_options = []
         for _, row in sorted_df.iterrows():
             section = row['Section'] if row['Section'] is not None else '?'
+            example_no = row['example_no'] if row['example_no'] is not None else '?'
             word = row['Word']
             status = row['Status'] if row['Status'] else 'Unknown'
             status_emoji = get_status_emoji(status)
-            display_text = f"Section {section}: {status_emoji} {word}"
+            display_text = f"Section {section}-{example_no}: {status_emoji} {word}"
             word_options.append(display_text)
 
         # デフォルトインデックスを決定
@@ -178,11 +179,13 @@ def main():
             example_text = get_text('example_sentences_for', selected_lang)
             st.markdown(f"{example_text} **{selected_word}**")
             section = word_info['Section']
+            example_no = word_info['example_no']
             status = word_info['Status']
             status_emoji = get_status_emoji(status)
 
             section_text = get_text('section', selected_lang)
-            info_text = f"**{section_text}:** {section}"
+            example_no_display = example_no if example_no is not None else '?'
+            info_text = f"**{section_text}:** {section}-{example_no_display}"
 
             # 単語情報とステータス更新を横並びに配置
             col_info, col_status = st.columns(
@@ -231,10 +234,6 @@ def main():
             # 例文を表示（rollupから取得した例文を使用）
             try:
                 example_sentence = word_info.get('example_sentence', '')
-
-                # デバッグ情報を追加
-                preview = example_sentence[:100] if example_sentence else '(空)'
-                st.write(f"**DEBUG**: example_sentence = '{preview}...'")
 
                 if example_sentence:
                     # 改行で分割して行ごとに処理

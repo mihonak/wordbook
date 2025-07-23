@@ -87,6 +87,7 @@ def get_words_data():
             section = None
             status = None
             example_sentence = ""
+            example_no = None
 
             for prop_name, prop_value in page['properties'].items():
                 prop_type = prop_value.get('type')
@@ -120,6 +121,23 @@ def get_words_data():
                                 if number_value is not None:
                                     if prop_name == 'Section':
                                         section = int(number_value)
+                                    elif prop_name == 'Example No':
+                                        example_no = int(number_value)
+
+                            elif first_item.get('type') == 'title':
+                                # Example No (rollup) - titleタイプからExample Noを取得
+                                if prop_name == 'Example No':
+                                    title_data = first_item.get('title', [])
+                                    if title_data:
+                                        title_parts = []
+                                        for text_element in title_data:
+                                            if text_element.get('plain_text'):
+                                                title_parts.append(
+                                                    text_element['plain_text']
+                                                )
+                                        title_text = ''.join(title_parts).strip()
+                                        if title_text.isdigit():
+                                            example_no = int(title_text)
 
                             elif first_item.get('type') == 'rich_text':
                                 # Example sentence (rollup) - 例文をrollupから取得
@@ -139,8 +157,11 @@ def get_words_data():
                     elif rollup_result.get('type') == 'number':
                         # rollupが直接数値の場合
                         number_value = rollup_result.get('number')
-                        if number_value is not None and prop_name == 'Section':
-                            section = int(number_value)
+                        if number_value is not None:
+                            if prop_name == 'Section':
+                                section = int(number_value)
+                            elif prop_name == 'Example No':
+                                example_no = int(number_value)
 
                 elif prop_type == 'status':
                     # Status
@@ -156,6 +177,7 @@ def get_words_data():
                     'Word': word_text,
                     'Status': status,
                     'example_sentence': example_sentence,  # rollupから取得した例文
+                    'example_no': example_no,  # rollupから取得したExample No
                     'page_id': page['id']
                 })
 
